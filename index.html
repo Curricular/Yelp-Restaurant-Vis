@@ -1,0 +1,149 @@
+<html>
+    <head>
+        <title></title>
+        <script src="d3.js"></script>
+        <style>
+            
+        </style>
+    </head>
+    <body>
+        <svg id="chart">
+
+        </svg>
+    </body>
+    <script>
+        const CHART_WIDTH=500
+            const CHART_HEIGHT=300
+            const COUNT_COLOR="#ca0020"
+            const MARGIN = {
+                left: 50,
+                top: 30,
+                bottom: 40,
+                right: 50
+            }
+            
+            function drawChart(data){
+                let categoryData = d3.nest().key(d => d.category)
+                    .rollup(v => v.length)
+                    .entries(data)
+                    .map(d => {return {category: d.key, count: d.value}})
+                
+                categoryData.sort((d1, d2) => {
+                    return d3.descending(d1.count, d2.count)})
+                
+                
+                // define constants
+                const CHART_BODY_WIDTH = CHART_WIDTH - MARGIN.left - MARGIN.right;
+                const CHART_BODY_HEIGHT = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+                
+                //-------------------------- Create Scales --------------------------
+                //Compute max values for scale Domain
+                const maxCount = d3.max(categoryData, d=>+d.count)
+
+                //Create Scale for the x-axis - https://github.com/d3/d3-scale/blob/master/README.md#scaleBand
+                let barBands = d3.scaleBand()
+                    .range([0, CHART_BODY_WIDTH]) //**TODO 1.1 ** - ADD RANGE FOR THE X AXIS SCALE
+                    .domain(categoryData.map(d => d.category)) //**TODO 1.2 ** - ADD DOMAIN FOR THE X AXIS SCALE
+                    .padding(0.2)
+                    
+                
+                //Create Scale for the y-axis
+                yScale = d3.scaleLinear()
+                    .range([0, CHART_BODY_HEIGHT]) //**TODO 1.3 ** - ADD RANGE OF THE SCALE
+                    .domain([maxCount, 0]) //Note: We consider import values as negative, since money is leaving the country, for that reason we create a scale going from max exports as positive to max import as negative
+                
+
+
+                //-------------------------- Draw Bars --------------------------
+
+                //Add bars for imports - This bars are already done, once the scales are created correctly, they should appear on the screen
+                let barGraph = d3.select("#chart")
+                        .append("g")
+                        .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`)
+                        .selectAll("rect")
+                        .data(categoryData)
+                        .enter()
+                
+                categoryCountBars = barGraph
+                        .append("rect")
+                
+                categoryCountBars
+                    .attr("width", barBands.bandwidth())
+                    .attr("height", d => yScale(0) - yScale(+d.count))
+                    .attr("x", d => barBands(d.category))
+                    .attr("y", d => yScale(+d.count))
+                    .attr("fill", COUNT_COLOR)
+                    .append("title").text(d => `${d.category}->${d.count}`)
+
+                //-------------------------- Add Axes --------------------------
+                //Create the x-axis
+                let yAxis = d3.axisLeft(yScale)
+                    .tickFormat(v => +v);
+                let xAxis = d3.axisBottom(barBands)//**TODO 3.3 ** - CREATE X AXIS
+                
+                //**TODO 3.1 ** - Draw the axis for the bar chart
+                yAxisGroup = d3.select("#chart")
+                                .append("g")
+                                .attr("transform",`translate(${MARGIN.left},${MARGIN.top})`)
+                                .call(yAxis);
+                rotateX = -40
+                rotateY = 90
+                yAxisGroup.append("text")
+                            .text("Number of Restaurants")
+                            .attr("dx", rotateX)
+                            .attr("dy", rotateY)
+                            .attr("fill", "black")
+                            .attr("text-anchor", "middle")
+                            .attr("transform", `rotate(270, ${rotateX}, ${rotateY})`);
+
+
+//                dx = 30
+//                dy = 26
+//                d3.select("#chart")
+//                    .append("g")
+//                        .attr("transform", `translate(${MARGIN.left},${CHART_HEIGHT - MARGIN.bottom})`)
+//                        .call(xAxis)
+//                        .selectAll("text")
+//                            .attr("text-anchor", "middle")
+//                            .attr("alignment-baseline", "central")
+//                            .attr("transform", `rotate(90, ${-10}, ${0})`)
+//                            .attr("dy", barBands.bandwidth() / 2)
+//                            .attr("dx", ".15em")
+//                            .attr("fill", "black")
+            }
+        
+            function drawData(data){
+                drawChart(data)
+            }
+
+            function loadData(cb){
+                d3.json("Las Vegas Business.json", (err, data) => {
+                    cb(data)
+                })
+            }
+
+            function getDataForIndicator(data, indicator, country) { 
+                //This function filters the data returning only data of a giving indicator
+                indicatorData = data.filter(d => d["Indicator Name"] === indicator);
+                if(country) {
+                    indicatorData = indicatorData.filter(d => d["Country Name"] === country)
+                }
+                return indicatorData
+            }
+
+
+            function main(){ //Main function
+                //Set the width and height of the charts SVG
+                d3.selectAll("#chart")
+                    .attr("width", CHART_WIDTH)
+                    .attr("height", CHART_HEIGHT)
+
+                //Load the data
+                loadData((data) => {
+                    drawData(data)
+                })
+            }
+
+            main()
+    </script>
+</html>
